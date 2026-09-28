@@ -19,6 +19,22 @@ Lo comparto para que puedan probarlo, darme ideas y aprender conmigo. Es un proy
 - Temas claro y oscuro, con colores personalizables.
 - Avisos de nuevas versiones y consulta de actualizaciones desde Ajustes.
 
+## Imágenes
+
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/434a25a2-3507-4c30-afaf-f5f8c4a365aa" width="240" alt="Captura 1"></td>
+    <td><img src="https://github.com/user-attachments/assets/6bed93fe-9f38-4c59-8b81-4eada6accd38" width="240" alt="Captura 2"></td>
+    <td><img src="https://github.com/user-attachments/assets/8a84701d-ba58-4b58-a1ee-f6a1d96c7a6c" width="240" alt="Captura 3"></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/9716e117-e0af-423d-a986-bdea1829d2ea" width="240" alt="Captura 4"></td>
+    <td><img src="https://github.com/user-attachments/assets/14ae2006-01ca-439b-a59e-0d016968632a" width="240" alt="Captura 5"></td>
+    <td><img src="https://github.com/user-attachments/assets/6223eb32-1f99-4cfb-abb7-ab25b508a593" width="240" alt="Captura 6"></td>
+  </tr>
+</table>
+
+
 ## Instalación
 
 Necesitas **Android 10 o posterior**. En [Releases](https://github.com/ShagySoaD/pulso-releases/releases/latest) están las APK y las novedades de cada versión.
