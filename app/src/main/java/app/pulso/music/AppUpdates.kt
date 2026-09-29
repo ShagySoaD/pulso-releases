@@ -21,9 +21,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URI
-import java.security.MessageDigest
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 internal data class AppUpdateState(
@@ -61,18 +61,37 @@ internal object AppUpdates {
         mutable.update { it.copy(info = info) }
         scope.launch {
             if (info != null) {
-                val apk = File(context.cacheDir, "app-updates/update-${info.code}.apk")
+                val apk = File(context.filesDir, "app-updates/update-${info.code}.apk")
                 if (apk.isFile && runCatching { verifyApk(context, apk, info.code) }.isSuccess)
                     mutable.update { it.copy(ready = apk.absolutePath) }
             }
             val active = WorkManager.getInstance(context).getWorkInfosForUniqueWork("pulso-apk-download").get()
                 .any { !it.state.isFinished }
             if (active) mutable.update { it.copy(downloading = true) }
-            check(context, manual = false, notify = false)
+            refreshNotification(context)
         }
     }
 
     fun checkNow(context: Context) { scope.launch { check(context.applicationContext, manual = true, notify = false) } }
+
+    fun onAppOpened(context: Context) {
+        refreshNotification(context)
+        scope.launch { check(context.applicationContext, manual = true, notify = true) }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    fun refreshNotification(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val info = mutable.value.info?.takeIf { it.code > installedCode(context) }
+        if (info == null) { manager.cancel(NOTICE); return }
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled() ||
+            manager.getNotificationChannel(CHANNEL)?.importance == NotificationManager.IMPORTANCE_NONE) return
+        try {
+            manager.notify(NOTICE, notification(context, "PULSO ${info.name} disponible",
+                "Toca para abrir Ajustes y revisar la actualización.")
+                .setAutoCancel(false).setOngoing(true).setOnlyAlertOnce(true).build())
+        } catch (_: SecurityException) { /* Settings remain accessible without notification permission. */ }
+    }
 
     @android.annotation.SuppressLint("MissingPermission") // Checked before notify; revoked permissions are caught.
     suspend fun check(context: Context, manual: Boolean, notify: Boolean): Boolean = checkLock.withLock {
@@ -85,7 +104,7 @@ internal object AppUpdates {
         try {
             val url = "https://github.com/${BuildConfig.UPDATE_REPOSITORY}/releases/latest/download/update.json"
             val raw = withContext(Dispatchers.IO) {
-                val connection = connection(url)
+                val connection = UpdateTransfer.connection(url)
                 try {
                     connection.inputStream.use {
                         val bytes = java.io.ByteArrayOutputStream()
@@ -113,16 +132,7 @@ internal object AppUpdates {
                         else -> "Versión ${info.name} disponible."
                     })
             }
-            if (notify && compatible != null && prefs.getLong("notified", 0) != info.code &&
-                NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-                val manager = context.getSystemService(NotificationManager::class.java)
-                if (manager.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE) {
-                    try {
-                        manager.notify(NOTICE, notification(context, "PULSO ${info.name} disponible", "Toca para ver las novedades y actualizar.").build())
-                        prefs.edit().putLong("notified", info.code).apply()
-                    } catch (_: SecurityException) { /* The in-app card remains available without notification permission. */ }
-                }
-            }
+            refreshNotification(context)
             true
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) {
@@ -139,8 +149,6 @@ internal object AppUpdates {
             .setContentTitle(title).setContentText(text).setContentIntent(pending).setAutoCancel(true)
     }
 
-    fun shouldPrompt(context: Context, code: Long) = prefs(context).getLong("prompted", 0) != code
-    fun prompted(context: Context, code: Long) { prefs(context).edit().putLong("prompted", code).apply() }
     fun message(text: String) { mutable.update { it.copy(message = text) } }
     fun finishedDownload() { mutable.update { it.copy(downloading = false) } }
     val openRequested = MutableStateFlow(false)
@@ -170,47 +178,45 @@ internal object AppUpdates {
         val sha = data.getString("sha256").orEmpty()
         require(code > installedCode(context) && AppUpdateInfo.trustedAsset(url, BuildConfig.UPDATE_REPOSITORY))
         require(expectedSize in 1..AppUpdateInfo.MAX_APK_BYTES && sha.matches(Regex("[0-9a-f]{64}")))
-        val dir = File(context.cacheDir, "app-updates").apply { mkdirs() }
+        val dir = File(context.filesDir, "app-updates")
+        if (!dir.isDirectory && !dir.mkdirs()) throw UpdateFailure("No se pudo crear la carpeta privada de actualizaciones.")
+        if (dir.usableSpace < expectedSize + 16L * 1024 * 1024)
+            throw UpdateFailure("No hay espacio suficiente para descargar la APK. Libera al menos ${expectedSize / 1048576 + 16} MB y reintenta.")
         val part = File(dir, "update-$code.part.apk")
         val apk = File(dir, "update-$code.apk")
         try {
-            val connection = connection(url)
+            val connection = UpdateTransfer.connection(url)
             try {
-                val digest = MessageDigest.getInstance("SHA-256")
-                var total = 0L
-                var previousPercent = -1
                 connection.inputStream.use { input -> part.outputStream().use { output ->
-                    val buffer = ByteArray(65536)
-                    while (true) {
+                    UpdateTransfer.copyVerified(input, output, expectedSize, sha) { percent ->
                         currentCoroutineContext().ensureActive()
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        total += count
-                        require(total <= expectedSize)
-                        output.write(buffer, 0, count); digest.update(buffer, 0, count)
-                        val percent = (100 * total / expectedSize).toInt()
-                        if (percent != previousPercent) { onProgress(percent); previousPercent = percent }
+                        onProgress(percent)
                     }
                 } }
-                require(total == expectedSize && digest.digest().joinToString("") { "%02x".format(it) } == sha)
             } finally { connection.disconnect() }
+            message("Descarga completa. Verificando APK y firma…")
             verifyApk(context, part, code)
-            if (apk.exists()) check(apk.delete())
-            check(part.renameTo(apk))
+            if (apk.exists() && !apk.delete()) throw UpdateFailure("No se pudo reemplazar la descarga anterior. Reintenta.")
+            if (!part.renameTo(apk)) throw UpdateFailure("No se pudo guardar la APK verificada. Comprueba el espacio disponible.")
             mutable.update { it.copy(ready = apk.absolutePath, message = "Descarga verificada. Pulsa Instalar.") }
         } finally {
             part.delete()
-            mutable.update { it.copy(downloading = false) }
         }
     }
 
     private fun verifyApk(context: Context, file: File, code: Long) {
         val pm = context.packageManager
-        val archive = pm.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: error("APK inválida")
+        val archive = pm.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
+            ?: throw UpdateFailure("Android no pudo leer la APK descargada. Vuelve a descargarla.")
         val installed = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        require(archive.packageName == context.packageName && archive.longVersionCode == code && code > installed.longVersionCode)
+        android.util.Log.i("PulsoUpdater", "Archive=${archive.packageName}/${archive.longVersionCode}, installed=${installed.longVersionCode}, expected=$code")
+        if (archive.packageName != context.packageName) throw UpdateFailure("La APK no pertenece a PULSO. No se instalará.")
+        if (archive.longVersionCode != code || code <= installed.longVersionCode)
+            throw UpdateFailure("La versión de la APK no coincide con la actualización. Busca actualizaciones de nuevo.")
         fun signatures(info: android.content.pm.PackageInfo) = info.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
-        require(signatures(archive).isNotEmpty() && signatures(archive) == signatures(installed))
+        android.util.Log.i("PulsoUpdater", "Archive signers=${signatures(archive).size}, installed signers=${signatures(installed).size}, match=${signatures(archive) == signatures(installed)}")
+        if (signatures(archive).isEmpty() || signatures(archive) != signatures(installed))
+            throw UpdateFailure("La firma de esta APK es distinta a la de PULSO instalado. No se puede actualizar sobre una compilación firmada con otra clave.")
     }
 
     fun install(context: Context) {
@@ -230,29 +236,7 @@ internal object AppUpdates {
         } catch (_: Exception) { message("No se pudo abrir la instalación. Vuelve a descargar la actualización.") }
     }
 
-    private fun connection(initial: String): HttpURLConnection {
-        var url = initial
-        repeat(6) {
-            val uri = URI(url)
-            require(uri.scheme == "https" && uri.userInfo == null && (uri.port == -1 || uri.port == 443))
-            require(uri.host in setOf("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"))
-            val connection = uri.toURL().openConnection() as HttpURLConnection
-            connection.instanceFollowRedirects = false
-            connection.connectTimeout = 15000; connection.readTimeout = 30000
-            connection.setRequestProperty("User-Agent", "Pulso-Android-Updater")
-            val status = connection.responseCode
-            if (status in listOf(301, 302, 303, 307, 308)) {
-                val location = connection.getHeaderField("Location")
-                connection.disconnect()
-                require(!location.isNullOrBlank())
-                url = uri.resolve(location).toString()
-            } else {
-                if (status != 200) { connection.disconnect(); error("HTTP $status") }
-                return connection
-            }
-        }
-        error("Demasiadas redirecciones")
-    }
+
 }
 
 class AppUpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -264,12 +248,30 @@ class AppUpdateDownloadWorker(context: Context, params: WorkerParameters) : Coro
     override suspend fun doWork(): Result = try {
         setForeground(AppUpdates.progress(applicationContext, 0))
         withContext(Dispatchers.IO) {
-            AppUpdates.fetchApk(applicationContext, inputData) { setForeground(AppUpdates.progress(applicationContext, it)) }
+            for (attempt in 1..3) {
+                try {
+                    AppUpdates.fetchApk(applicationContext, inputData) { setForeground(AppUpdates.progress(applicationContext, it)) }
+                    break
+                } catch (e: IOException) {
+                    if (e is UpdateFailure || attempt == 3) throw e
+                    AppUpdates.message("Conexión interrumpida. Reintentando descarga (${attempt + 1}/3)…")
+                    delay(attempt * 2000L)
+                }
+            }
         }
         Result.success()
     } catch (cancelled: CancellationException) { throw cancelled }
-    catch (_: Exception) {
-        AppUpdates.message("No se pudo descargar o verificar la APK. Reintenta con conexión y espacio disponible.")
-        Result.failure()
+    catch (e: Exception) {
+        android.util.Log.w("PulsoUpdater", "Update download failed (${e.javaClass.simpleName})", e)
+        val message = when (e) {
+            is UpdateFailure -> e.message.orEmpty()
+            is SocketTimeoutException -> "La conexión tardó demasiado. Reintenta con una conexión estable."
+            is UnknownHostException -> "No se pudo conectar con GitHub. Comprueba tu conexión."
+            is SecurityException -> "Android bloqueó la descarga en segundo plano. Mantén PULSO abierto y reintenta."
+            is IOException -> "La descarga se interrumpió (${e.javaClass.simpleName}). Comprueba la conexión y el espacio disponible."
+            else -> "No se pudo iniciar o verificar la actualización (${e.javaClass.simpleName}). Reintenta desde Ajustes."
+        }
+        AppUpdates.message(message)
+        Result.failure(workDataOf("error" to message))
     } finally { AppUpdates.finishedDownload() }
 }

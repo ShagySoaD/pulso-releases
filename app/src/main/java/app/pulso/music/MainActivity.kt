@@ -60,15 +60,25 @@ private val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurface
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); enableEdgeToEdge()
-        if (intent.getBooleanExtra("showAppUpdates", false)) AppUpdates.openRequested.value = true
+        if (intent.getBooleanExtra("showAppUpdates", false)) {
+            AppUpdates.openRequested.value = true
+            intent.removeExtra("showAppUpdates")
+        }
         setContent {
-            PulsoTheme(this) { Pulso(); AppUpdateHost() }
+            PulsoTheme(this) { Pulso() }
         }
     }
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra("showAppUpdates", false)) AppUpdates.openRequested.value = true
+        if (intent.getBooleanExtra("showAppUpdates", false)) {
+            AppUpdates.openRequested.value = true
+            intent.removeExtra("showAppUpdates")
+        }
+    }
+    override fun onStart() {
+        super.onStart()
+        AppUpdates.onAppOpened(this)
     }
 }
 
@@ -111,11 +121,23 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
     LaunchedEffect(library.playlists, selectedList) { if (selectedList != null && library.playlists.none { it.name == selectedList }) selectedList = null }
     var playlistTracks by remember { mutableStateOf<List<Track>?>(null) }
     var playlistName by remember { mutableStateOf("") }
+    val updatesRequested by AppUpdates.openRequested.collectAsStateWithLifecycle()
+    val settingsListState = rememberLazyListState()
+    LaunchedEffect(updatesRequested) {
+        if (updatesRequested) {
+            tab = 3
+            openPlayer = false
+            playlistTracks = null
+            vm.closeArtist()
+            settingsListState.scrollToItem(0)
+            AppUpdates.openRequested.value = false
+        }
+    }
     androidx.activity.compose.BackHandler(enabled = selectedMix != null && tab == 0 && !openPlayer && !artistScreen.open) { selectedMix = null }
     androidx.activity.compose.BackHandler(enabled = explore.playlist != null && tab == 1 && !openPlayer && !artistScreen.open) { vm.explore.back() }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.importAudio(it) }
     val importLyrics = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(vm::importLyrics) }
-    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { AppUpdates.refreshNotification(context) }
     LaunchedEffect(Unit) { if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) }
     LaunchedEffect(tab, filter, selectedList) { if (tab == 2) listState.scrollToItem(0) }
     LaunchedEffect(tab, explore.revision) { if (tab == 1) listState.scrollToItem(0) }
@@ -150,11 +172,11 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
         }
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            LazyColumn(Modifier.widthIn(max = 900.dp).fillMaxWidth(), state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            LazyColumn(Modifier.widthIn(max = 900.dp).fillMaxWidth(), state = if (tab == 3) settingsListState else listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item {
                     PulsoHeader(listOf("Inicio", "Buscar", "Biblioteca", "Ajustes")[tab])
                 }
-                if (state.busy || state.error) item {
+                if (tab != 3 && (state.busy || state.error)) item {
                     Surface(color = if (state.error) MaterialTheme.colorScheme.errorContainer else Panel, shape = RoundedCornerShape(12.dp)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) { Text(state.message, color = if (state.error) MaterialTheme.colorScheme.onErrorContainer else Muted, fontSize = 13.sp); if (state.busy) { Spacer(Modifier.height(8.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) } }
                     }
@@ -366,8 +388,8 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                         }
                     }
                     3 -> {
-                        item { ThemePicker() }
                         item { AppUpdateSettings() }
+                        item { ThemePicker() }
                         item { BackupControls(transfer) }
                         item {
                             Surface(color = Panel, shape = RoundedCornerShape(20.dp)) { Column(Modifier.fillMaxWidth().padding(20.dp)) {

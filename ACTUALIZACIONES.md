@@ -5,11 +5,13 @@ Metadatos: https://github.com/ShagySoaD/pulso-releases/releases/latest/download/
 
 ## Para el usuario
 
-Instala manualmente la primera version 0.7.11. A partir de ella, PULSO consulta el canal al abrir si la ultima consulta correcta tiene mas de 12 horas, y programa una consulta periodica con conexion. Android puede retrasar el trabajo en segundo plano.
+El actualizador existe desde 0.7.11. Desde 0.7.13, PULSO consulta el canal al abrir la actividad y programa ademas una consulta cada 12 horas con conexion. Android puede retrasar el trabajo en segundo plano. Si el actualizador anterior falla, instalar manualmente 0.7.13 sobre la misma firma, sin desinstalar.
 
-Una version mas reciente y compatible muestra un aviso con novedades. La notificacion del sistema requiere permiso y se emite una vez por version. El aviso dentro de la app tambien se muestra una vez; Ajustes → Actualizaciones conserva el acceso aunque el usuario pulse Mas tarde o deniegue las notificaciones.
+Una version mas reciente y compatible mantiene una notificacion con un unico ID, que se restaura al abrir PULSO mientras siga pendiente. Requiere permiso de notificaciones; Android puede permitir al usuario descartarla. Al tocarla se abre Ajustes, con Actualizaciones como primer bloque, sin dialogo automatico. Cuando ya esta actualizado se retira el aviso.
 
 Descargar selecciona la arquitectura compatible. La descarga se ejecuta con WorkManager y notificacion de progreso. Se verifican tamano, SHA-256, paquete, version y certificado antes de abrir el instalador de Android. Si hace falta, Android pide permitir instalaciones desde PULSO: al volver, pulsar Instalar. La instalacion requiere intervencion del usuario y mantiene los datos al actualizar sin desinstalar.
+
+Desde 0.7.13, la APK se guarda en filesDir/app-updates, sin permiso general de almacenamiento. Los errores de E/S de red se reintentan hasta tres veces; las discrepancias de integridad o firma se rechazan. Los mensajes distinguen las etapas del fallo. Logcat usa la etiqueta PulsoUpdater para diagnosticar verificacion en Android.
 
 ## Para publicar una version
 
