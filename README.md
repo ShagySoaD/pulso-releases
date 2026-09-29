@@ -76,6 +76,7 @@ Para generar APK por arquitectura, usa `:app:assembleRelease -PperArchitecture=t
 - `app/src/main/res/`: imágenes, iconos y recursos.
 - `app/src/test/`: pruebas.
 - `app/build.gradle.kts`: versión y dependencias.
+- [ANUNCIOS.md](ANUNCIOS.md): cambiar el aviso de bienvenida desde GitHub.
 - [ACTUALIZACIONES.md](ACTUALIZACIONES.md): funcionamiento y publicación de actualizaciones.
 
 Las claves de firma oficiales no se incluyen. Tu compilación usará la clave de depuración de tu equipo y no podrá instalarse encima de la APK oficial. Para desarrollar, usa un emulador o un dispositivo de prueba.

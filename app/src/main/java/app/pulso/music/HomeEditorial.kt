@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
     val accent = colors.primary
     val shape = RoundedCornerShape(24.dp)
     val backdrop = Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(colors.surfaceVariant, accent, if (theme == ThemeChoice.LIGHT) .09f else .16f), colors.surfaceVariant, colors.surface))
-    Column(modifier.clip(shape).background(backdrop)
+    Column(modifier.clip(shape).pulseLight(24.dp).background(backdrop)
         .then(if (open != null) Modifier.clickable(onClickLabel = "Abrir ${mix.title}", onClick = open) else Modifier)
         .padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth().height(if (featured) 145.dp else 118.dp)) {

@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
             intent.removeExtra("showAppUpdates")
         }
         setContent {
-            PulsoTheme(this) { Pulso() }
+            PulsoTheme(this) { PulseLightHost { Pulso(); StartupAnnouncementHost() } }
         }
     }
     override fun onNewIntent(intent: android.content.Intent) {
@@ -678,7 +678,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                     when (section) {
                         0 -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(Modifier.weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true).widthIn(max = 340.dp)) {
-                                Artwork(track, Modifier.fillMaxSize())
+                                Artwork(track, Modifier.fillMaxSize().pulseLight(12.dp, enabled = state.playRequested && !state.buffering))
                                 Surface(color = Navy.copy(alpha = .9f), shape = CircleShape, modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
                                     IconToggleButton(checked = track.favorite, onCheckedChange = { vm.favorite(track) }) {
                                         Icon(if (track.favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, if (track.favorite) "Quitar de favoritas" else "Añadir a favoritas", tint = if (track.favorite) Orange else MaterialTheme.colorScheme.onSurface)

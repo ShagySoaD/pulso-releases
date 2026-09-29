@@ -1,5 +1,8 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose") }
 val perArchitecture = providers.gradleProperty("perArchitecture").orNull == "true"
+val buildAbis = providers.gradleProperty("targetAbi").orNull?.let { listOf(it) }
+    ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+require(buildAbis.all { it in listOf("arm64-v8a", "armeabi-v7a", "x86_64") }) { "Unsupported targetAbi" }
 android {
     namespace = "app.pulso.music"
     compileSdk = 36
@@ -7,17 +10,17 @@ android {
         applicationId = "app.pulso.music"
         minSdk = 29
         targetSdk = 35
-        versionCode = 25
-        versionName = "0.7.13"
+        versionCode = 27
+        versionName = "0.7.15"
         buildConfigField("String", "UPDATE_REPOSITORY", "\"ShagySoaD/pulso-releases\"")
-        if (!perArchitecture) ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        if (!perArchitecture) ndk { abiFilters += buildAbis }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     splits {
         abi {
             isEnable = perArchitecture
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            include(*buildAbis.toTypedArray())
             isUniversalApk = false
         }
     }

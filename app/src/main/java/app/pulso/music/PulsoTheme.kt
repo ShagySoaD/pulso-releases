@@ -167,6 +167,6 @@ internal val LocalPulsoTheme = staticCompositionLocalOf { ThemeSelection(ThemeCh
             Text(section, fontSize = 15.sp, color = colors.onSurfaceVariant)
         }
         Spacer(Modifier.width(12.dp))
-        PulsoMark(Modifier.size(52.dp))
+        PulsoMark(Modifier.size(52.dp).pulseLight(18.dp))
     }
 }

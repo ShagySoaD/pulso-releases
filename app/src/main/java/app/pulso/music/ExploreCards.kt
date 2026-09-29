@@ -40,7 +40,7 @@ import coil.compose.AsyncImage
     var entered by remember(mix.id) { mutableStateOf(false) }
     LaunchedEffect(mix.id) { entered = true }
     val reveal by animateFloatAsState(if (entered) 1f else 0f, tween(650), label = "radar-entry")
-    Surface(onClick = open, shape = RoundedCornerShape(28.dp)) {
+    Surface(onClick = open, modifier = Modifier.pulseLight(28.dp), shape = RoundedCornerShape(28.dp)) {
         Column(Modifier.background(Brush.linearGradient(listOf(colors.primaryContainer, colors.surfaceVariant, colors.surface)))
             .padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
