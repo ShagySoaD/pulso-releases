@@ -10,8 +10,8 @@ android {
         applicationId = "app.pulso.music"
         minSdk = 29
         targetSdk = 35
-        versionCode = 27
-        versionName = "0.7.15"
+        versionCode = 28
+        versionName = "0.7.16"
         buildConfigField("String", "UPDATE_REPOSITORY", "\"ShagySoaD/pulso-releases\"")
         if (!perArchitecture) ndk { abiFilters += buildAbis }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

@@ -54,4 +54,16 @@ class AppUpdateInfoTest {
         assertEquals(4000, info.notes.length)
         assertEquals("a".repeat(64), info.assets.first().sha256)
     }
+    @Test fun browserDownloadOnlyUsesNewCompatibleOfficialApk() {
+        val info = AppUpdateInfo.parse(payload().toString(), repo)
+        assertEquals("https://github.com/$repo/releases/download/v0.7.12/Pulso-arm64-v8a.apk",
+            info.browserDownloadUrl(listOf("arm64-v8a", "armeabi-v7a"), 29, 23, repo))
+        assertEquals("https://github.com/$repo/releases/download/v0.7.12/Pulso-x86_64.apk",
+            info.browserDownloadUrl(listOf("x86_64"), 35, 23, repo))
+        assertNull(info.browserDownloadUrl(listOf("arm64-v8a"), 29, 24, repo))
+        assertNull(info.browserDownloadUrl(listOf("arm64-v8a"), 28, 23, repo))
+        assertNull(info.browserDownloadUrl(listOf("mips"), 29, 23, repo))
+        val foreign = info.copy(assets = listOf(info.assets.first().copy(url = "https://evil.test/update.apk")))
+        assertNull(foreign.browserDownloadUrl(listOf("arm64-v8a"), 29, 23, repo))
+    }
 }

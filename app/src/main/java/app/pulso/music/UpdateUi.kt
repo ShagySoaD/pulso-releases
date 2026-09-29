@@ -27,16 +27,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                 }
             }
             Text(state.message.ifBlank { "Se comprueba al abrir PULSO y periódicamente en segundo plano." }, style = MaterialTheme.typography.bodySmall)
-            if (state.downloading) LinearProgressIndicator(progress = { state.progress / 100f }, modifier = Modifier.fillMaxWidth())
-            if (state.downloading) Text("${state.progress} %", style = MaterialTheme.typography.bodySmall)
             state.info?.let { info ->
-                Button(onClick = {
-                    if (state.ready != null) AppUpdates.install(context) else AppUpdates.download(context, info)
-                }, enabled = !state.downloading && !state.checking, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (state.ready != null) "Instalar actualización" else "Descargar actualización")
+                Text("Se abrirá la descarga oficial en tu navegador. Al terminar, abre la APK e instala encima de PULSO, sin desinstalar.", style = MaterialTheme.typography.bodySmall)
+                Button(onClick = { AppUpdates.openDownload(context, info) },
+                    enabled = !state.checking, modifier = Modifier.fillMaxWidth()) {
+                    Text("Descargar actualización")
                 }
             }
-            OutlinedButton(onClick = { AppUpdates.checkNow(context) }, enabled = !state.checking && !state.downloading && AppUpdates.configured,
+            OutlinedButton(onClick = { AppUpdates.checkNow(context) }, enabled = !state.checking && AppUpdates.configured,
                 modifier = Modifier.fillMaxWidth()) { Text(if (state.checking) "Buscando…" else "Buscar actualizaciones") }
         }
     }

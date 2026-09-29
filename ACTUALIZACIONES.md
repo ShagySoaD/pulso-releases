@@ -1,17 +1,16 @@
 # Actualizaciones de PULSO
 
-Canal: https://github.com/ShagySoaD/pulso-releases/releases
-Metadatos: https://github.com/ShagySoaD/pulso-releases/releases/latest/download/update.json
-
 ## Para el usuario
 
-El actualizador existe desde 0.7.11. Desde 0.7.13, PULSO consulta el canal al abrir la actividad y programa ademas una consulta cada 12 horas con conexion. Android puede retrasar el trabajo en segundo plano. Si el actualizador anterior falla, instalar manualmente 0.7.13 sobre la misma firma, sin desinstalar.
+Desde 0.7.16, **Descargar actualización** abre en el navegador el enlace oficial de GitHub de la APK compatible con el teléfono. Al terminar, abre el archivo desde Descargas y confirma la instalación de Android, **sin desinstalar PULSO**. Android comprueba la firma y conserva la biblioteca al actualizar sobre la misma aplicación.
 
-Una version mas reciente y compatible mantiene una notificacion con un unico ID, que se restaura al abrir PULSO mientras siga pendiente. Requiere permiso de notificaciones; Android puede permitir al usuario descartarla. Al tocarla se abre Ajustes, con Actualizaciones como primer bloque, sin dialogo automatico. Cuando ya esta actualizado se retira el aviso.
+El cambio requiere instalar 0.7.16 una vez. Si el actualizador de 0.7.15 o anterior falla, descarga esta versión desde Releases e instálala manualmente. Una actualización nueva no puede cambiar el código del descargador que ya está instalado antes de instalarla.
 
-Descargar selecciona la arquitectura compatible. La descarga se ejecuta con WorkManager y notificacion de progreso. Se verifican tamano, SHA-256, paquete, version y certificado antes de abrir el instalador de Android. Si hace falta, Android pide permitir instalaciones desde PULSO: al volver, pulsar Instalar. La instalacion requiere intervencion del usuario y mantiene los datos al actualizar sin desinstalar.
+Se mantienen la consulta al abrir PULSO, la revisión periódica cada 12 horas con conexión y la notificación de actualización pendiente. Al tocarla se abre Ajustes, con Actualizaciones al principio. Las comprobaciones en segundo plano pueden retrasarse por Android. La notificación requiere permiso; el usuario decide cuándo actualizar.
 
-Desde 0.7.13, la APK se guarda en filesDir/app-updates, sin permiso general de almacenamiento. Los errores de E/S de red se reintentan hasta tres veces; las discrepancias de integridad o firma se rechazan. Los mensajes distinguen las etapas del fallo. Logcat usa la etiqueta PulsoUpdater para diagnosticar verificacion en Android.
+El enlace se selecciona según las arquitecturas soportadas, el Android mínimo y una versión superior a la instalada. Sólo se admiten enlaces HTTPS de APK en Releases del repositorio configurado. Se siguen publicando SHA-256 y tamaños para verificaciones externas, pero PULSO ya no descarga ni verifica el binario internamente. Android puede pedir permitir instalaciones al navegador o gestor de archivos; PULSO ya no solicita ese permiso.
+
+Las tareas del antiguo descargador interno se cancelan al iniciar. No se muestra progreso de descarga dentro de PULSO: lo gestiona el navegador. Los permisos y descargas de canciones no cambian.
 
 ## Para publicar una version
 

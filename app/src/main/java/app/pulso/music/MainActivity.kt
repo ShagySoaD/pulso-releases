@@ -123,6 +123,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
     var playlistName by remember { mutableStateOf("") }
     val updatesRequested by AppUpdates.openRequested.collectAsStateWithLifecycle()
     val settingsListState = rememberLazyListState()
+    val messagesListState = rememberLazyListState()
     LaunchedEffect(updatesRequested) {
         if (updatesRequested) {
             tab = 3
@@ -165,18 +166,18 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                 }
             }
             NavigationBar(containerColor = Navy) {
-                val names = listOf("Inicio", "Buscar", "Biblioteca", "Ajustes")
-                val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.LibraryMusic, Icons.Default.Tune)
-                names.forEachIndexed { index, name -> NavigationBarItem(selected = tab == index, onClick = { tab = index; selectedList = null }, icon = { Icon(icons[index], name) }, label = { Text(name, fontSize = 11.sp) }) }
+                val names = listOf("Inicio", "Buscar", "Biblioteca", "Ajustes", "Mensajes")
+                val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.LibraryMusic, Icons.Default.Tune, Icons.Default.ChatBubbleOutline)
+                listOf(0, 1, 2, 4, 3).forEach { index -> NavigationBarItem(selected = tab == index, onClick = { tab = index; selectedList = null }, icon = { Icon(icons[index], names[index]) }, label = { Text(names[index], fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }) }
             }
         }
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            LazyColumn(Modifier.widthIn(max = 900.dp).fillMaxWidth(), state = if (tab == 3) settingsListState else listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            LazyColumn(Modifier.widthIn(max = 900.dp).fillMaxWidth(), state = when (tab) { 3 -> settingsListState; 4 -> messagesListState; else -> listState }, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item {
-                    PulsoHeader(listOf("Inicio", "Buscar", "Biblioteca", "Ajustes")[tab])
+                    PulsoHeader(listOf("Inicio", "Buscar", "Biblioteca", "Ajustes", "Mensajes")[tab])
                 }
-                if (tab != 3 && (state.busy || state.error)) item {
+                if (tab in 0..2 && (state.busy || state.error)) item {
                     Surface(color = if (state.error) MaterialTheme.colorScheme.errorContainer else Panel, shape = RoundedCornerShape(12.dp)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) { Text(state.message, color = if (state.error) MaterialTheme.colorScheme.onErrorContainer else Muted, fontSize = 13.sp); if (state.busy) { Spacer(Modifier.height(8.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) } }
                     }
@@ -387,6 +388,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                             items(tracks, key = { "library-${it.id}" }) { track -> SongRow(track, vm, { vm.play(track, tracks) }, { playlist(listOf(track)) }, playlistContext = selectedList) }
                         }
                     }
+                    4 -> { item { MessagesPlaceholder() } }
                     3 -> {
                         item { AppUpdateSettings() }
                         item { ThemePicker() }

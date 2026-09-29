@@ -5,6 +5,11 @@ import java.net.URI
 
 internal data class UpdateAsset(val abi: String, val url: String, val sha256: String, val size: Long)
 internal data class AppUpdateInfo(val code: Long, val name: String, val notes: String, val minSdk: Int, val assets: List<UpdateAsset>) {
+    fun browserDownloadUrl(abis: List<String>, sdk: Int, installedCode: Long, repo: String): String? =
+        if (code <= installedCode) null else compatible(abis, sdk)?.url?.takeIf {
+            trustedAsset(it, repo) && it.endsWith(".apk")
+        }
+
     fun compatible(abis: List<String>, sdk: Int): UpdateAsset? =
         if (sdk < minSdk) null else abis.firstNotNullOfOrNull { abi -> assets.firstOrNull { it.abi == abi } }
 
