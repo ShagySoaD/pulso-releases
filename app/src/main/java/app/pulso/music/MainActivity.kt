@@ -49,6 +49,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.work.WorkInfo
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 private val Navy: Color @Composable get() = MaterialTheme.colorScheme.background
 private val Panel: Color @Composable get() = MaterialTheme.colorScheme.surfaceVariant
@@ -60,6 +61,8 @@ private val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurface
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); enableEdgeToEdge()
+        SocialEngine.invitation(intent)
+        intent.getStringExtra("socialContact")?.let { SocialEngine.openRequested.value = it; intent.removeExtra("socialContact") }
         if (intent.getBooleanExtra("showAppUpdates", false)) {
             AppUpdates.openRequested.value = true
             intent.removeExtra("showAppUpdates")
@@ -71,6 +74,8 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        SocialEngine.invitation(intent)
+        intent.getStringExtra("socialContact")?.let { SocialEngine.openRequested.value = it; intent.removeExtra("socialContact") }
         if (intent.getBooleanExtra("showAppUpdates", false)) {
             AppUpdates.openRequested.value = true
             intent.removeExtra("showAppUpdates")
@@ -108,6 +113,9 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
     val downloads by vm.downloads.collectAsStateWithLifecycle()
     val eq by AudioSettings.state.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
+    val socialRequested by SocialEngine.openRequested.collectAsStateWithLifecycle()
+    val socialInvite by SocialEngine.inviteRequested.collectAsStateWithLifecycle()
+    val unreadMessages by remember { SocialEngine.state.map { it.friends.sumOf { friend -> friend.unread } }.distinctUntilChanged() }.collectAsStateWithLifecycle(initialValue = 0)
     var query by remember { mutableStateOf("") }
     fun submitSearch(text: String = query, category: SearchCategory = explore.category) {
         if (text.isBlank()) return
@@ -121,6 +129,9 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
     LaunchedEffect(library.playlists, selectedList) { if (selectedList != null && library.playlists.none { it.name == selectedList }) selectedList = null }
     var playlistTracks by remember { mutableStateOf<List<Track>?>(null) }
     var playlistName by remember { mutableStateOf("") }
+    LaunchedEffect(socialRequested, socialInvite) {
+        if (socialRequested != null || socialInvite != null) { tab = 4; openPlayer = false; playlistTracks = null; vm.closeArtist() }
+    }
     val updatesRequested by AppUpdates.openRequested.collectAsStateWithLifecycle()
     val settingsListState = rememberLazyListState()
     val messagesListState = rememberLazyListState()
@@ -168,7 +179,9 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
             NavigationBar(containerColor = Navy) {
                 val names = listOf("Inicio", "Buscar", "Biblioteca", "Ajustes", "Mensajes")
                 val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.LibraryMusic, Icons.Default.Tune, Icons.Default.ChatBubbleOutline)
-                listOf(0, 1, 2, 4, 3).forEach { index -> NavigationBarItem(selected = tab == index, onClick = { tab = index; selectedList = null }, icon = { Icon(icons[index], names[index]) }, label = { Text(names[index], fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }) }
+                listOf(0, 1, 2, 4, 3).forEach { index -> NavigationBarItem(selected = tab == index, onClick = { tab = index; selectedList = null }, icon = {
+                    BadgedBox(badge = { if (index == 4 && unreadMessages > 0) Badge { Text(if (unreadMessages > 99) "99+" else unreadMessages.toString()) } }) { Icon(icons[index], names[index]) }
+                }, label = { Text(names[index], fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }) }
             }
         }
     }) { padding ->
@@ -388,7 +401,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                             items(tracks, key = { "library-${it.id}" }) { track -> SongRow(track, vm, { vm.play(track, tracks) }, { playlist(listOf(track)) }, playlistContext = selectedList) }
                         }
                     }
-                    4 -> { item { MessagesPlaceholder() } }
+                    4 -> { item { MessagesScreen { track -> vm.play(track, listOf(track)) } } }
                     3 -> {
                         item { AppUpdateSettings() }
                         item { ThemePicker() }
@@ -550,7 +563,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
         if (track.artwork.isNotBlank()) AsyncImage(model = if (fallback) track.artwork else upgraded, contentDescription = "Carátula de ${track.title}", contentScale = ContentScale.Fit, filterQuality = androidx.compose.ui.graphics.FilterQuality.High, onError = { if (!fallback && upgraded != track.artwork) fallback = true }, modifier = Modifier.fillMaxSize())
     }
 }
-@Composable private fun PlaylistArtwork(songs: List<Track>, modifier: Modifier) {
+@Composable internal fun PlaylistArtwork(songs: List<Track>, modifier: Modifier) {
     val covers = songs.filter { it.artwork.isNotBlank() }.distinctBy { it.artwork }.take(4)
     Box(modifier.clip(RoundedCornerShape(12.dp)).background(Panel)) {
         when (covers.size) {

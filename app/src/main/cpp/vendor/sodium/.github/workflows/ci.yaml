@@ -1,0 +1,104 @@
+name: ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CTEST_OUTPUT_ON_FAILURE: ON
+      CTEST_PARALLEL_LEVEL: 2
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gcc-static
+            os: ubuntu-24.04
+            compiler: gcc
+            generator: Ninja
+            cmake-args: "-DBUILD_SHARED_LIBS=OFF"
+          - name: gcc-dynamic
+            os: ubuntu-22.04
+            compiler: gcc
+            generator: Ninja
+            cmake-args: "-DBUILD_SHARED_LIBS=ON"
+          - name: gcc-minimal
+            os: ubuntu-22.04
+            compiler: gcc
+            generator: Ninja
+            cmake-args: "-DSODIUM_MINIMAL=ON"
+          - name: clang-static
+            os: ubuntu-22.04
+            compiler: clang
+            generator: Ninja
+            cmake-args: "-DBUILD_SHARED_LIBS=OFF"
+          - name: clang-dynamic
+            os: ubuntu-24.04
+            compiler: clang
+            generator: Ninja
+            cmake-args: "-DBUILD_SHARED_LIBS=ON"
+          - name: clang-minimal
+            os: ubuntu-22.04
+            compiler: clang
+            generator: Ninja
+            cmake-args: "-DSODIUM_MINIMAL=ON"
+          - name: msvc-x86
+            os: windows-2022
+            generator: Visual Studio 17 2022
+            cmake-args: -A Win32
+          - name: msvc-x64
+            os: windows-2025
+            generator: Visual Studio 17 2022
+            cmake-args: -A x64
+          - name: clang-cl-x64
+            os: windows-2022
+            generator: Visual Studio 17 2022
+            cmake-args: -T ClangCL -A x64
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - run: pip install cmake==4.0.3 ninja==1.11.1.4 --upgrade
+
+      - run: echo "CC=${{ matrix.compiler }}" >> $GITHUB_ENV
+        if: startsWith(matrix.os, 'ubuntu')
+
+      - run: cmake -Wdev -Werror=dev -S . -B build -G "${{ matrix.generator }}" ${{ matrix.cmake-args }}
+
+      - run: cmake --build build
+
+      - run: (cd build && ctest)
+        if: startsWith(matrix.os, 'ubuntu')
+
+      - run: (cd build && ctest -C Debug )
+        if: startsWith(matrix.os, 'windows')
+
+  oldest-supported-cmake:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      # Installing 3.11.4.post1 through 3.13.3 fail for various reasons, so 3.14
+      # is the oldest version we can reasonably test.
+      - run: pipx install cmake==3.14.4.post1 && cmake --version
+      - run: cmake -Wdev -Werror=dev -S . -B build
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true

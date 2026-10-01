@@ -51,6 +51,11 @@ class PlaybackService : MediaSessionService() {
         player.setHandleAudioBecomingNoisy(true)
         player.setWakeMode(C.WAKE_MODE_LOCAL)
         player.addListener(object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                val item = player.currentMediaItem
+                val track = item?.let { Track(it.mediaId, it.mediaMetadata.title?.toString().orEmpty(), it.mediaMetadata.artist?.toString().orEmpty()) }
+                SocialEngine.playback(player.isPlaying, track)
+            }
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
                 generation++
                 handler.removeCallbacks(stablePlayback)
@@ -139,5 +144,5 @@ class PlaybackService : MediaSessionService() {
         return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
-    override fun onDestroy() { generation++; handler.removeCallbacksAndMessages(null); PlaybackFeedback.message.value = ""; AudioSettings.apply = null; equalizer?.release(); session?.release(); player.release(); super.onDestroy() }
+    override fun onDestroy() { SocialEngine.playback(false, null); generation++; handler.removeCallbacksAndMessages(null); PlaybackFeedback.message.value = ""; AudioSettings.apply = null; equalizer?.release(); session?.release(); player.release(); super.onDestroy() }
 }

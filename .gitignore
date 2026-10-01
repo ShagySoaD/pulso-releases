@@ -14,3 +14,8 @@ keystore.properties
 signing.properties
 .env
 .env.*
+
+.cxx/
+**/.cxx/
+.externalNativeBuild/
+
