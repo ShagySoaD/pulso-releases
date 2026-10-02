@@ -84,6 +84,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         AppUpdates.onAppOpened(this)
+        OfficialMessages.refresh()
     }
 }
 
@@ -116,6 +117,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
     val socialRequested by SocialEngine.openRequested.collectAsStateWithLifecycle()
     val socialInvite by SocialEngine.inviteRequested.collectAsStateWithLifecycle()
     val unreadMessages by remember { SocialEngine.state.map { it.friends.sumOf { friend -> friend.unread } }.distinctUntilChanged() }.collectAsStateWithLifecycle(initialValue = 0)
+    val officialUnread by remember { OfficialMessages.state.map { it.unread }.distinctUntilChanged() }.collectAsStateWithLifecycle(initialValue = 0)
     var query by remember { mutableStateOf("") }
     fun submitSearch(text: String = query, category: SearchCategory = explore.category) {
         if (text.isBlank()) return
@@ -180,7 +182,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                 val names = listOf("Inicio", "Buscar", "Biblioteca", "Ajustes", "Mensajes")
                 val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.LibraryMusic, Icons.Default.Tune, Icons.Default.ChatBubbleOutline)
                 listOf(0, 1, 2, 4, 3).forEach { index -> NavigationBarItem(selected = tab == index, onClick = { tab = index; selectedList = null }, icon = {
-                    BadgedBox(badge = { if (index == 4 && unreadMessages > 0) Badge { Text(if (unreadMessages > 99) "99+" else unreadMessages.toString()) } }) { Icon(icons[index], names[index]) }
+                    BadgedBox(badge = { if (index == 4 && unreadMessages + officialUnread > 0) Badge { Text(if (unreadMessages + officialUnread > 99) "99+" else (unreadMessages + officialUnread).toString()) } }) { Icon(icons[index], names[index]) }
                 }, label = { Text(names[index], fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }) }
             }
         }

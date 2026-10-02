@@ -9,6 +9,7 @@ class PulsoApp : Application() {
         super.onCreate()
         Library.init(this)
         SocialEngine.init(this)
+        OfficialMessages.init(this)
         registerActivityLifecycleCallbacks(SocialLifecycle())
         AppUpdates.start(this)
         getSystemService(NotificationManager::class.java).createNotificationChannel(

@@ -29,6 +29,7 @@ import java.util.Locale
     val state by SocialEngine.state.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }; var editing by remember { mutableStateOf(false) }
     var qr by remember { mutableStateOf(false) }
+    var official by remember { mutableStateOf(false) }
     var invitation by remember { mutableStateOf("") }
     var chat by remember { mutableStateOf<String?>(null) }; var profile by remember { mutableStateOf<String?>(null) }
     var removing by remember { mutableStateOf<String?>(null) }
@@ -56,6 +57,7 @@ import java.util.Locale
             Text("Conversaciones", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             FilledTonalIconButton(onClick = { adding = true }, enabled = state.ready && state.address.isNotBlank()) { Icon(Icons.Default.PersonAddAlt1, "Añadir contacto") }
         }
+        OfficialConversationRow { official = true }
         if (state.friends.isEmpty()) Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
             Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Default.Forum, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.primary)
@@ -84,6 +86,7 @@ import java.util.Locale
         }
     }
     if (qr) ConnectQrDialog(state) { qr = false }
+    if (official) OfficialConversation { official = false }
     if (adding) AddConnectContact(invitation) { adding = false; invitation = "" }
     if (editing) EditSocialProfile(state) { editing = false }
     state.friends.firstOrNull { it.key == chat }?.let { SocialChat(it, state.ready, profile == null, { chat = null }, { profile = it.key }) }
