@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
             intent.removeExtra("showAppUpdates")
         }
         setContent {
-            PulsoTheme(this) { PulseLightHost { Pulso(); StartupAnnouncementHost() } }
+            PulsoTheme(this) { PulseLightHost { Pulso(); StartupAnnouncementHost(); LocalPanel.Host() } }
         }
     }
     override fun onNewIntent(intent: android.content.Intent) {
@@ -85,7 +85,9 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         AppUpdates.onAppOpened(this)
         OfficialMessages.refresh()
+        UsageMetrics.start(this)
     }
+    override fun onStop() { UsageMetrics.stop(); super.onStop() }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -407,6 +409,7 @@ fun Pulso(vm: MusicViewModel = viewModel()) {
                     3 -> {
                         item { AppUpdateSettings() }
                         item { ThemePicker() }
+                        item { UsageMetrics.Settings() }
                         item { BackupControls(transfer) }
                         item {
                             Surface(color = Panel, shape = RoundedCornerShape(20.dp)) { Column(Modifier.fillMaxWidth().padding(20.dp)) {

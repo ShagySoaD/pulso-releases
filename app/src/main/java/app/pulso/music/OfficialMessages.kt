@@ -115,7 +115,7 @@ internal object OfficialMessages {
             }
         }
     }
-    private fun decode(raw: String): OfficialFeed {
+    internal fun decode(raw: String): OfficialFeed {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_ENVELOPE)
         val envelope = JSONObject(raw)
         require(envelope.getInt("schema") == 1)

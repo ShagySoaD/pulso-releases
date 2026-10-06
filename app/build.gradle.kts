@@ -1,5 +1,11 @@
+import java.util.Properties
+
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose") }
 val perArchitecture = providers.gradleProperty("perArchitecture").orNull == "true"
+val privateAdmin = providers.gradleProperty("privateAdmin").orNull == "true"
+val localConfig = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
 val buildAbis = providers.gradleProperty("targetAbi").orNull?.let { listOf(it) }
     ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
 require(buildAbis.all { it in listOf("arm64-v8a", "armeabi-v7a", "x86_64") }) { "Unsupported targetAbi" }
@@ -10,8 +16,10 @@ android {
         applicationId = "app.pulso.music"
         minSdk = 29
         targetSdk = 35
-        versionCode = 32
-        versionName = "0.7.20"
+        versionCode = 34
+        versionName = "0.7.22"
+        buildConfigField("String", "METRICS_URL", "\"${localConfig.getProperty("pulso.metrics.url", "")}\"")
+        buildConfigField("String", "METRICS_KEY", "\"${localConfig.getProperty("pulso.metrics.key", "")}\"")
         buildConfigField("String", "UPDATE_REPOSITORY", "\"ShagySoaD/pulso-releases\"")
         if (!perArchitecture) ndk { abiFilters += buildAbis }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -28,6 +36,7 @@ android {
     ndkVersion = "28.2.13676358"
     externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
     buildFeatures { compose = true; buildConfig = true }
+    sourceSets.getByName("main").java.srcDir(if (privateAdmin) "src/privateAdmin/java" else "src/publicAdmin/java")
     testOptions.unitTests.all { it.systemProperty("pulso.liveSpotify", providers.gradleProperty("liveSpotify").orNull == "true") }
     buildTypes {
         getByName("release") {
