@@ -46,7 +46,7 @@ El código completo está aquí para explorar, clonar o hacer un fork, bajo la l
 
 ## Gracias
 
-[Echo Music](https://github.com/EchoMusicApp/Echo-Music) ha sido una referencia para varias ideas. PULSO utiliza Android Jetpack, youtubedl-android, yt-dlp, FFmpeg, Toxcore, libsodium y ZXing; sus licencias se conservan en el proyecto.
+PULSO utiliza Android Jetpack, youtubedl-android, yt-dlp, FFmpeg, Toxcore, libsodium y ZXing; sus licencias se conservan en el proyecto.
 
 Gracias por probarla y acompañarme mientras sigo aprendiendo.
 
