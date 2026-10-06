@@ -19,7 +19,7 @@ Comparto la APK y el código para que puedan probarla, explorar el proyecto y ap
 - Personalizar los colores y elegir entre tema claro u oscuro.
 - Hablar con tus contactos en **PULSO Connect**, compartir tu QR y mostrar tus favoritas, playlists o lo que estás escuchando. Tú eliges qué compartir.
 
-## Novedades de 0.7.20
+## Novedades de 0.7.22
 
 Ahora encontrarás **PULSO Oficial** en Mensajes. Por ahí compartiré novedades, actividades y anuncios del proyecto. Los mensajes quedan guardados para leerlos después y verás un contador cuando haya algo nuevo.
 
